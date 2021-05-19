@@ -1,0 +1,36 @@
+var a, b1a, c2cc, d, e;
+begin
+
+  a := 10;
+
+  b1a := 20; /* 这是多行注释 */
+
+  while a >= 10 do
+    a := 30;
+
+  if b1a < c2cc then
+
+    d := a + 3;
+
+  else
+
+    a := a * b1a;
+
+  begin
+
+    if 10 < d then
+
+        while a <= d do
+
+          if a <= d then
+
+            e := a + d / 4;
+
+          else
+             e := a;
+
+    else
+      e := a + d - b1a * c2cc;
+  end
+
+end. $
