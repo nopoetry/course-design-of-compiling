@@ -6,6 +6,7 @@ import java.util.Map;
 /**
  * @author libuyan
  * @date 2021/5/16 17:57
+ * @description nothing
  */
 public class SystemConstants {
     /**
