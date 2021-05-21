@@ -16,6 +16,7 @@ begin
 
     a := a * b1a;
 
+
   begin
 
     if 10 < d then
