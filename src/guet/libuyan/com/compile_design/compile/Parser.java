@@ -133,12 +133,6 @@ public class Parser {
             parseId();
         }
         matchToken(separatorMap.get(";"), ";");
-/*        //缺少分号
-        if (getCurToken().getType() != separatorMap.get(";")) {
-            errorHandle(0, "");
-        } else {
-            tokenPtr++;
-        }*/
     }
 
     private boolean matchToken(Short expectedType, String expectedTokenText) {
@@ -164,28 +158,12 @@ public class Parser {
             parseStatement();
             matchToken(keywordsMap.get("else"), "else");
             parseStatement();
-/*            if (getCurToken().getType() == keywordsMap.get("then")) {
-                tokenPtr++;
-                parseStatement();
-                if (getCurToken().getType() == keywordsMap.get("else")) {
-                    tokenPtr++;
-                    parseStatement();
-                }
-            } else {
-                errorHandle(8, "");
-            }*/
         } else if (getCurToken().getType() == keywordsMap.get("while")) {
             //<当循环语句> ::= while <条件> do <语句>
             tokenPtr++;
             parseConditional();
             matchToken(keywordsMap.get("do"), "do");
             parseStatement();
-/*            if (getCurToken().getType() == keywordsMap.get("do")) {
-                tokenPtr++;
-                parseStatement();
-            } else {
-                errorHandle(9, "");
-            }*/
         } else if (getCurToken().getType() == keywordsMap.get("begin")) {
             //<复合语句> ::= begin <语句> {;<语句>} end
             parseCompoundStatement();
@@ -195,13 +173,6 @@ public class Parser {
             tokenPtr++;
             matchToken(operatorMap.get(":="), ":=");
             expression();
-
-/*            if (getCurToken().getType() == operatorMap.get(":=")) {
-                tokenPtr++;
-                expression();
-            } else {
-                errorHandle(3, "");
-            }*/
         } else {
             errorHandle(SystemConstants.ID, curToken, "");
             tokenPtr++;
@@ -228,11 +199,6 @@ public class Parser {
             parseStatement();
             parseSelectableStatement();
             matchToken(keywordsMap.get("end"), "end");
-/*            if (getCurToken().getType() == keywordsMap.get("end")) {
-                tokenPtr++;
-            } else { //缺少end
-                errorHandle(7, "");
-            }*/
         }
     }
 
@@ -249,34 +215,6 @@ public class Parser {
         }
     }
 
-/*    private void parseCompoundStatement() {
-        //<复合语句> ::= begin <语句> {;<语句>} end
-        if (getCurToken().getType() == keywordsMap.get("begin")) {
-            tokenPtr++;
-            parseStatement();
-            while (getCurToken().getType() == separatorMap.get(";") || isHeadOfStatement()) {
-                if (getCurToken().getType() == separatorMap.get(";")) {
-                    tokenPtr++;
-                } else {
-                    if (getCurToken().getType() != keywordsMap.get("end")) {
-                        errorHandle(0, "");
-                    }
-                }
-                if (getCurToken().getType() == keywordsMap.get("end")) {
-                    errorHandle(21, "");
-                    break;
-                }
-                parseStatement();
-            }
-            if (getCurToken().getType() == keywordsMap.get("end")) {
-                tokenPtr++;
-            } else { //缺少end
-                errorHandle(7, "");
-            }
-        } else { //缺少begin
-            errorHandle(6, "");
-        }
-    }*/
 
     private boolean isHeadOfStatement() {
         return (getCurToken().getType() == keywordsMap.get("if") ||
@@ -349,18 +287,18 @@ public class Parser {
      * <乘法运算符> ::= * | /
      */
     private void parseTerm() {
-        factor();
+        parseFactor();
         while (getCurToken().getType() == operatorMap.get("*") ||
                 getCurToken().getType() == operatorMap.get("/")) {
             tokenPtr++;
-            factor();
+            parseFactor();
         }
     }
 
     /**
      * <因子> ::= <标识符> | <无符号整数> | '('<表达式>')'
      */
-    private void factor() {
+    private void parseFactor() {
         if (getCurToken().getType() == SystemConstants.ID) {
             tokenPtr++;
         } else if (getCurToken().getType() == SystemConstants.INT) {
@@ -369,11 +307,6 @@ public class Parser {
             tokenPtr++;
             expression();
             matchToken(separatorMap.get(")"), ")");
-/*            if (getCurToken().getType() == separatorMap.get(")")) {
-                tokenPtr++;
-            } else {
-                errorHandle(5, "");
-            }*/
         } else {
             errorHandle(SystemConstants.ID, curToken, "");
         }
@@ -402,97 +335,4 @@ public class Parser {
         }
         errorMessage.add(error);
     }
-
-/*    private void errorHandle(int k, String name) {
-        errorHappen = true;
-        String error = "";
-        switch (k) {
-            case -1: //常量定义不是const开头，变量定义不是var开头
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "wrong token";
-                break;
-            case 0: //缺少分号
-                if (getCurToken().getType() == separatorMap.get(";")) {
-                    error = "Error happened in line " + getCurToken().getRow() + ":" + "Missing ; before " + getCurToken().getText();
-                } else {
-                    error = "Error happened in line " + getCurToken().getRow() + ":" + "Missing ; before " + getCurToken().getType();
-                }
-                break;
-            case 1: //标识符不合法
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Identifier illegal";
-                break;
-            case 2: //不合法的比较符
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "illegal compare symbol";
-                break;
-            case 3: //常量赋值没用=
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Const assign must be =";
-                break;
-            case 4: //缺少（
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Missing (";
-                break;
-            case 5: //缺少）
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Missing )";
-                break;
-            case 6: //缺少begin
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Missing begin";
-                break;
-            case 7: //缺少end
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Missing end";
-                break;
-            case 8: //缺少then
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Missing then";
-                break;
-            case 9: //缺少do
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Missing do";
-                break;
-            case 10: //call, write, read语句中，不存在标识符
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Not exist" + getCurToken().getText();
-                break;
-            case 11: //该标识符不是proc类型
-                error = "Error happened in line " + getCurToken().getRow() + ":" + getCurToken().getText() + "is not " +
-                        "a procedure";
-                break;
-            case 12: //read, write语句中，该标识符不是var类型
-                error = "Error happened in line " + getCurToken().getRow() + ":" + getCurToken().getText() + "is not " +
-                        "a variable";
-                break;
-            case 13: //赋值语句中，该标识符不是var类型
-                error = "Error happened in line " + getCurToken().getRow() + ":" + name + "is not a varible";
-                break;
-            case 14: //赋值语句中，该标识符不存在
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "not exist " + name;
-                break;
-            case 15: //该标识符已存在
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Already exist " + name;
-                break;
-            case 16: //调用函数参数错误
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Number of parameters of" +
-                        " procedure " + name + "is incorrect";
-                break;
-            case 17: //缺少end 后的结束符
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Missing .(End 后的 '.')";
-                break;
-            case 18: //多余代码
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "too much code after .";
-                break;
-            case 19: //缺少until
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Missing until";
-                break;
-            case 20: //赋值符应为：=
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Assign must be :=";
-                break;
-            case 21: //end前多了；
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "; is no need before end";
-                break;
-            case 22: //until前多了；
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "; is no need before " +
-                        "ubtil";
-                break;
-            case 23: //缺少,
-                error = "Error happened in line " + getCurToken().getRow() + ":" + "Missing ,";
-                break;
-            default:
-                break;
-        }
-        errorMessage.add(error);
-    }*/
 }

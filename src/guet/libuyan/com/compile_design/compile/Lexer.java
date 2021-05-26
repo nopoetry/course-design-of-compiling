@@ -72,8 +72,21 @@ public class Lexer {
             tokenList.add(new Token((short) -1, "结束符", null, row, column));
             System.out.println("\033[1;93m" + "词法分析成功!");
             return true;
+        } else if (isSpecialChar(ch)) {
+            getSpecialChar();
         }
         return false;
+    }
+
+    /**
+     * 特殊字符
+     */
+    private void getSpecialChar() {
+        int startColumn = column + 1;
+        column++;
+        type = SystemConstants.ILLEGAL_CHAR;
+        Token token = setToken(String.valueOf(ch), null, startColumn);
+        printToken(token);
     }
 
     private boolean isWhiteSpace() {
@@ -157,21 +170,16 @@ public class Lexer {
         ch = chars[++column];
         int idlength = 0;
         while (hasNextCharInIdWord()) {
-            if (isIllegalChar()) {
-                type = SystemConstants.ILLEGAL_CHAR;
-            }
             ch = chars[column++];
             tokenText.append(ch);
             idlength++;
         }
 
         String tokenTextStr = tokenText.toString();
-        if (type != SystemConstants.ILLEGAL_CHAR) {
-            if (idlength > SystemConstants.ID_MAX_LENGTH) {
-                type = SystemConstants.OVER_LENGTH;
-            } else {
-                type = keywordsMap.getOrDefault(tokenTextStr, SystemConstants.ID);
-            }
+        if (idlength > SystemConstants.ID_MAX_LENGTH) {
+            type = SystemConstants.OVER_LENGTH;
+        } else {
+            type = keywordsMap.getOrDefault(tokenTextStr, SystemConstants.ID);
         }
 
         int startColumn = column - tokenTextStr.length() + 1;
@@ -184,11 +192,7 @@ public class Lexer {
     }
 
     private boolean hasNextCharInIdWord() {
-        return column < line.length() &&
-                !Character.isWhitespace((ch = chars[column])) &&
-                ch != ';' && ch != ',' && ch != '.' && ch != ':'
-                && ch != '*' && ch != '+' && ch != '-' && ch != '/'
-                && ch != '<' && ch != '=' && ch != '>';
+        return column < line.length() && Character.isLetterOrDigit(ch = chars[column]);
     }
 
     private Token setToken(String text, String value, int startColumn) {
@@ -213,22 +217,17 @@ public class Lexer {
         int startColumn = column + 1;
         int numberValue;
         ch = chars[++column];
-        while (column < line.length() && Character.isLetterOrDigit(ch)) {
+        while (column < line.length() && Character.isDigit(ch)) {
             tokenNumber.append(ch);
-            if (Character.isLetter(ch)) {
-                type = SystemConstants.ILLEGAL_CHAR;
-            }
             ch = chars[++column];
         }
 
         String tokenNumberStr = tokenNumber.toString();
-        if (type != SystemConstants.ILLEGAL_CHAR) {
-            numberValue = Integer.parseInt(tokenNumberStr);
-            if (numberValue > SystemConstants.MAX_INT) {
-                type = SystemConstants.OVER_INT;
-            } else {
-                type = SystemConstants.INT;
-            }
+        numberValue = Integer.parseInt(tokenNumberStr);
+        if (numberValue > SystemConstants.MAX_INT) {
+            type = SystemConstants.OVER_INT;
+        } else {
+            type = SystemConstants.INT;
         }
 
         Token token = setToken(tokenNumberStr, tokenNumberStr, startColumn);
@@ -249,7 +248,7 @@ public class Lexer {
         } else if(token.getType() < 0) {
             String[] errorStrings = errorMap.get(token.getType());
             System.out.println("\033[31m" + "Error type [" + errorStrings[0] + "] at line [" + token.getRow() + ":" +
-                    token.getColumn() + "]: " + errorStrings[1]);
+                    token.getColumn() + "]: " + errorStrings[1] + ": `" + token.getText() + "`");
         } else {
             System.out.print("\033[30m" + "Get a comment like this: ");
             System.out.println("\033[32m" + token.getText());
@@ -263,7 +262,7 @@ public class Lexer {
      * @return true为包含，false为不包含
      */
     private static boolean isSpecialStr(String str) {
-        String regEx = "[ _`~!@#$%^&*()+=|{}':;',\\[\\].<>/?~！@#￥%……&*（）——+|{}【】‘；：”“’。，、？]|\n|\r|\t";
+        String regEx = "[ _`~!@#%^&|{}':;',\\[\\]./?~！@#￥%……&*（）——|{}【】‘；：”“’。，、？]|\n|\r|\t";
         Pattern p = Pattern.compile(regEx);
         Matcher m = p.matcher(str);
         return m.find();
