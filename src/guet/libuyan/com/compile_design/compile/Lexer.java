@@ -186,7 +186,9 @@ public class Lexer {
     private boolean hasNextCharInIdWord() {
         return column < line.length() &&
                 !Character.isWhitespace((ch = chars[column])) &&
-                ch != ';' && ch != ',' && ch != '.';
+                ch != ';' && ch != ',' && ch != '.' && ch != ':'
+                && ch != '*' && ch != '+' && ch != '-' && ch != '/'
+                && ch != '<' && ch != '=' && ch != '>';
     }
 
     private Token setToken(String text, String value, int startColumn) {

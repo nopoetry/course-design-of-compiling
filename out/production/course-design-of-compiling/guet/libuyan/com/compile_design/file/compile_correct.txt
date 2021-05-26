@@ -1,11 +1,11 @@
 var a, b1a, c2cc, d, e;
 begin
 
-  a := 10;
+  a:=(1!0 + 1);
 
-  b1a := 20; /* 这是多行注释 */
+  b1a:=20; /* 这是多行注释 */
 
-  while a >= 10 do
+  while a>=10 do
     a := 30;
 
   if b1a < c2cc then
@@ -14,7 +14,8 @@ begin
 
   else
 
-    a := a * b1a;
+    a := a*b1a;
+
 
   begin
 
