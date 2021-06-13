@@ -1,5 +1,6 @@
-package guet.libuyan.com.compile_design.test4;
+package guet.libuyan.com.compile_design.test4.lexer;
 
+import guet.libuyan.com.compile_design.test4.commons.ReservedWords;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -46,12 +47,8 @@ public class LexerTest {
         Lexer lexer = new Lexer(new File("src/guet/libuyan/com/compile_design/file/compile_correct.txt"));
 
         while (lexer.hasCharacter()) {
-            Word word = lexer.getNextWord();
-            if (word != null) {
-                System.out.println(word);
-            }
+            lexer.getNextWord();
         }
-        Character ch = null;
     }
 
     @Test
@@ -59,12 +56,26 @@ public class LexerTest {
         Lexer lexer = new Lexer(new File("src/guet/libuyan/com/compile_design/file/compile_error.txt"));
 
         while (lexer.hasCharacter()) {
-            Word word = lexer.getNextWord();
-            if (word != null) {
-                System.out.println(word);
-            }
+            lexer.getNextWord();
         }
-        Character ch = null;
+    }
+
+    @Test
+    public void test5() {
+        Lexer lexer = new Lexer("");
+
+        while (lexer.hasCharacter()) {
+            lexer.getNextWord();
+        }
+    }
+
+    @Test
+    public void test6() {
+        Lexer lexer = new Lexer(new File("src/guet/libuyan/com/compile_design/test4/program1.pl0"));
+
+        while (lexer.hasCharacter()) {
+            lexer.getNextWord();
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-package guet.libuyan.com.compile_design.test4;
+package guet.libuyan.com.compile_design.test4.commons;
 
 /**
  * @author lan
@@ -6,14 +6,15 @@ package guet.libuyan.com.compile_design.test4;
  */
 public enum Type {
     unknown("未知"), identifier("标识符"), number("数字"),
-    plus("加号"), minus("减号"), times("乘号"),
+    plus("加号"), minus("减号"), times("乘号"), division("除号"),
     less("小于"), greater("大于"), comma("逗号"),
     eq("等于号"), neq("不等于号"), leq("小于等于"),
     geq("大于等于"), semicolon("分号"), ifsym("if"),
     thensym("then"), whilesym("while"), dosym("do"),
     callsym("call"), constsym("const"), varsym("var"),
     proceduresym("procedure"), beginsym("begin"), endsym("end"),
-    assignment("赋值号"), lparen("左括号"), rparen("右括号");
+    assignment("赋值号"), lparen("左括号"), rparen("右括号"),
+    pound("结束符");
 
     private final String description;
 

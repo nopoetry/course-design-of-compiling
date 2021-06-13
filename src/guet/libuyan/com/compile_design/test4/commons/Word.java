@@ -1,15 +1,13 @@
-package guet.libuyan.com.compile_design.test4;
+package guet.libuyan.com.compile_design.test4.commons;
 
-import com.sun.istack.internal.Nullable;
-
-import java.util.Arrays;
+import guet.libuyan.com.compile_design.test4.commons.Type;
 
 /**
  * @author lan
  * @create 2021-06-11-15:52
  */
 public class Word {
-    private char[] name;
+    private String name;
     private Type type;
     private int value;
 
@@ -19,9 +17,9 @@ public class Word {
     public Word() {
     }
 
-    public Word(char[] name, Type type, int row, int column) {
-        if (name.length > 8) {
-            throw new RuntimeException("错误：标识符最长为8个字符, at " + row + "," + column);
+    public Word(String name, Type type, int row, int column) {
+        if (name.length() > 8 && type == Type.identifier) {
+            throw new RuntimeException("错误：标识符最长为8个字符, " + name + " at " + row + "," + column);
         }
 
         this.name = name;
@@ -30,22 +28,26 @@ public class Word {
         this.column = column;
     }
 
-    public Word(String name, Type type, int row, int column) {
-        if (name.length() > 8) {
+    public Word(String name, Type type, int value, int row, int column) {
+        if (name.length() > 8 && type == Type.identifier) {
             throw new RuntimeException("错误：标识符最长为8个字符, " + name + " at " + row + "," + column);
         }
 
-        this.name = name.toCharArray();
+        if (value > 65536) {
+            throw new RuntimeException("错误：无符号整数的值不能超过65536 at " + row + ", " + column);
+        }
+        this.value = value;
+        this.name = name;
         this.type = type;
         this.row = row;
         this.column = column;
     }
 
-    public char[] getName() {
+    public String getName() {
         return name;
     }
 
-    public void setName(char[] name) {
+    public void setName(String name) {
         this.name = name;
     }
 

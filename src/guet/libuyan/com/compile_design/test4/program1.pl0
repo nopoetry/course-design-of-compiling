@@ -1,0 +1,1 @@
+var n, m, fact, sum;begin    if m > 0 then        begin            fact := fact * m;            m := m - 1;        end;    sum := 0;    n := 5;    c := 3;@    while n > 0 do        begin            m := +n;            fact := 1;            sum  := sum + fact;            n := n - 1;        end;end;

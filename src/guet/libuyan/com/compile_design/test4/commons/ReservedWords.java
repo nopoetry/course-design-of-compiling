@@ -1,4 +1,4 @@
-package guet.libuyan.com.compile_design.test4;
+package guet.libuyan.com.compile_design.test4.commons;
 
 import java.util.Arrays;
 import java.util.List;

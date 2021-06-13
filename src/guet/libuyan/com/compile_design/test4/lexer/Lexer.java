@@ -1,6 +1,10 @@
-package guet.libuyan.com.compile_design.test4;
+package guet.libuyan.com.compile_design.test4.lexer;
 
-import java.io.BufferedReader;
+import guet.libuyan.com.compile_design.test4.commons.CharList;
+import guet.libuyan.com.compile_design.test4.commons.ReservedWords;
+import guet.libuyan.com.compile_design.test4.commons.Type;
+import guet.libuyan.com.compile_design.test4.commons.Word;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -11,6 +15,8 @@ import java.io.IOException;
  */
 public class Lexer {
     private CharList charList;
+
+    private LexerInfoCollector infoCollector = new LexerInfoCollector();
 
     private int row = 1;
     private int column;
@@ -81,10 +87,14 @@ public class Lexer {
             }
 
             if (!ReservedWords.contains(wordName.toString())) {
-                word = new Word(wordName.toString(), Type.identifier, initialRow, initialColumn);
+                try {
+                    word = new Word(wordName.toString(), Type.identifier, initialRow, initialColumn);
+                } catch (RuntimeException e) {
+                    infoCollector.addError(e.getMessage());
+                    printErrorMsg(e.getMessage());
+                }
             } else {
                 word = new Word(wordName.toString(), Type.getTypeByName(wordName.toString()), initialRow, initialColumn);
-                //System.out.println("错误：标识符 " + wordName + " 与保留字冲突 at " + row + ", " + column);
             }
 
         } else if (isNumber(ch)) {
@@ -94,8 +104,12 @@ public class Lexer {
                 wordName.append(charList.pop());
             }
 
-            word = new Word(wordName.toString(), Type.number, initialRow, initialColumn);
-            word.setValue(Integer.parseInt(wordName.toString()), row, column);
+            try {
+                word = new Word(wordName.toString(), Type.number, Integer.parseInt(wordName.toString()), initialRow, initialColumn);
+            } catch (RuntimeException e) {
+                infoCollector.addError(e.getMessage());
+                printErrorMsg(e.getMessage());
+            }
         } else if (ch == ':') {
             //冒号开头
             if ((ch = charList.top()) != null && ch == '=') {
@@ -131,7 +145,10 @@ public class Lexer {
                 wordName.append(charList.pop());
                 word = new Word(wordName.toString(), Type.neq, initialRow, initialColumn);
             } else {
-                word = new Word(wordName.toString(), Type.unknown, initialRow, initialColumn);
+                String errorMsg = "词法错误：非法符号 " + wordName.toString() + " at " + initialRow + " , " + initialColumn;
+                infoCollector.addError(errorMsg);
+                printErrorMsg(errorMsg);
+//                word = new Word(wordName.toString(), Type.unknown, initialRow, initialColumn);
             }
         } else if (ch == ';') {
             //分号开头
@@ -154,11 +171,15 @@ public class Lexer {
         } else if (ch == ')') {
             //右括号开头
             word = new Word(wordName.toString(), Type.rparen, initialRow, initialColumn);
+        } else if (ch == '#') {
+            //结束符
+            word = new Word(wordName.toString(), Type.pound, initialRow, initialColumn);
         } else if (ch == '/') {
             //斜线开头
-            if ((ch = charList.pop()) != null && ch == '*') {
+            boolean isCommentsMatched = false;
+            if ((ch = charList.top()) != null && ch == '*') {
                 updateRowAndColumn(ch);
-                wordName.append(ch);
+                wordName.append(charList.pop());
 
                 while ((ch = charList.top()) != null) {
                     boolean finishedLoop = false;
@@ -177,19 +198,55 @@ public class Lexer {
                     }
 
                     if (finishedLoop) {
-                        System.out.println("注释：" + wordName.toString());
+                        isCommentsMatched = true;
                         break;
                     }
                 }
+                if (isCommentsMatched) {
+                    String comment = wordName.toString();
+                    printCommentMsg("注释：" + comment);
+                    infoCollector.addComment(comment);
+                } else {
+                    String errorMsg = "词法错误：注释符未匹配 at " + initialRow + ", " + initialColumn;
+                    infoCollector.addError(errorMsg);
+                    printErrorMsg(errorMsg);
+                }
 
+            } else if ((ch = charList.top()) != null && ch == '/') {
+                updateRowAndColumn(ch);
+                wordName.append(charList.pop());
+
+                while ((ch = charList.top()) != null && !isNewLine(ch)) {
+                    wordName.append(charList.pop());
+                }
+
+                String comment = wordName.toString();
+                printCommentMsg("注释：" + comment);
+                infoCollector.addComment(comment);
             } else {
-                word = new Word(wordName.toString(), Type.unknown, initialRow, initialColumn);
+                word = new Word(wordName.toString(), Type.division, initialRow, initialColumn);
             }
         } else {
-            word = new Word(wordName.toString(), Type.unknown, initialRow, initialColumn);
+            String errorMsg = "词法错误：非法符号 " + wordName.toString() + " at " + initialRow + " , " + initialColumn;
+            infoCollector.addError(errorMsg);
+            printErrorMsg(errorMsg);
+//            word = new Word(wordName.toString(), Type.unknown, initialRow, initialColumn);
         }
 
+        if (word == null && hasCharacter()) {
+            return getNextWord();
+        }
 
+        if (word != null) {
+            infoCollector.addWord(word);
+        }
+
+        return word;
+    }
+
+    public Word getNextWordAndShow() {
+        Word word = getNextWord();
+        System.out.println(word);
         return word;
     }
 
@@ -222,6 +279,16 @@ public class Lexer {
         return ch >= '0' && ch <= '9';
     }
 
+    /**
+     * 判断字符是否是换行符
+     *
+     * @param ch
+     * @return true:是   false:否
+     */
+    private boolean isNewLine(Character ch) {
+        return ch == '\r' || ch == '\n';
+    }
+
     private void updateRowAndColumn(Character ch) {
         if (ch == '\r' || ch == '\n') {
             row++;
@@ -229,5 +296,17 @@ public class Lexer {
         } else {
             column++;
         }
+    }
+
+    public LexerInfoCollector getInfoCollector() {
+        return infoCollector;
+    }
+
+    private void printErrorMsg(String msg) {
+        System.out.println("\033[31;4m" + msg + "\033[0m");
+    }
+
+    private void printCommentMsg(String msg) {
+        System.out.println("\033[32;4m" + msg + "\033[0m");
     }
 }
