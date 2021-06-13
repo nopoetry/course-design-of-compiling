@@ -20,6 +20,14 @@ public class LexerInfoCollector {
         errors = new ArrayList<>(20);
     }
 
+    public Word getWord(int i) {
+        return i < words.size() ? words.get(i) : null;
+    }
+
+    public boolean hasWord(int i) {
+        return i < words.size();
+    }
+
     public void addComment(String comment) {
         comments.add(comment);
     }
@@ -42,5 +50,29 @@ public class LexerInfoCollector {
 
     public void showAllWords() {
         words.forEach(System.out::println);
+    }
+
+    public List<Word> getWords() {
+        return words;
+    }
+
+    public void setWords(List<Word> words) {
+        this.words = words;
+    }
+
+    public List<String> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<String> comments) {
+        this.comments = comments;
+    }
+
+    public List<String> getErrors() {
+        return errors;
+    }
+
+    public void setErrors(List<String> errors) {
+        this.errors = errors;
     }
 }

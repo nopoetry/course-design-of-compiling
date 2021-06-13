@@ -37,7 +37,7 @@ public class LexerTest {
                 "\n" +
                 "    a := a*b1a;");
 
-        while (lexer.hasCharacter()) {
+        while (lexer.hasWord()) {
             System.out.println(lexer.getNextWord());
         }
     }
@@ -46,7 +46,7 @@ public class LexerTest {
     public void test3() {
         Lexer lexer = new Lexer(new File("src/guet/libuyan/com/compile_design/file/compile_correct.txt"));
 
-        while (lexer.hasCharacter()) {
+        while (lexer.hasWord()) {
             lexer.getNextWord();
         }
     }
@@ -55,7 +55,7 @@ public class LexerTest {
     public void test4() {
         Lexer lexer = new Lexer(new File("src/guet/libuyan/com/compile_design/file/compile_error.txt"));
 
-        while (lexer.hasCharacter()) {
+        while (lexer.hasWord()) {
             lexer.getNextWord();
         }
     }
@@ -64,7 +64,7 @@ public class LexerTest {
     public void test5() {
         Lexer lexer = new Lexer("");
 
-        while (lexer.hasCharacter()) {
+        while (lexer.hasWord()) {
             lexer.getNextWord();
         }
     }
@@ -72,9 +72,9 @@ public class LexerTest {
     @Test
     public void test6() {
         Lexer lexer = new Lexer(new File("src/guet/libuyan/com/compile_design/test4/program1.pl0"));
-
-        while (lexer.hasCharacter()) {
-            lexer.getNextWord();
+        lexer.analyse();
+        while (lexer.hasWord()) {
+            lexer.getNextWordAndShow();
         }
     }
 }

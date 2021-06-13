@@ -12,9 +12,6 @@ public class CharList {
     private char[] chars;
     private int index;
 
-    private int column;
-    private int row;
-
     public CharList(@NotNull String programStr) {
         chars = programStr.toCharArray();
     }

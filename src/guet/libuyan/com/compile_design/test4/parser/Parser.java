@@ -1,23 +1,28 @@
 package guet.libuyan.com.compile_design.test4.parser;
 
-import guet.libuyan.com.compile_design.test4.commons.FirstAndFollow;
-import guet.libuyan.com.compile_design.test4.lexer.Lexer;
+import guet.libuyan.com.compile_design.test2.Symbol;
+import guet.libuyan.com.compile_design.test4.commons.ReservedWords;
+import guet.libuyan.com.compile_design.test4.commons.SymbolTable;
 import guet.libuyan.com.compile_design.test4.commons.Type;
 import guet.libuyan.com.compile_design.test4.commons.Word;
 import guet.libuyan.com.compile_design.test4.exception.SyntaxException;
+import guet.libuyan.com.compile_design.test4.lexer.Lexer;
+import javafx.scene.control.Tab;
 
-import java.util.Arrays;
-
-import static guet.libuyan.com.compile_design.test4.commons.FirstAndFollow.*;
+import static guet.libuyan.com.compile_design.test4.commons.Type.*;
 
 /**
  * @author lan
  * @create 2021-06-11-21:08
  */
 public class Parser {
-    private ParserExceptionCollector exceptionCollector;
-    private Lexer lexer;
+    private final ParserExceptionCollector exceptionCollector;
+    private final Lexer lexer;
     private Word word;
+
+    private SymbolTable table = new SymbolTable();
+    private int relativeAddr;//符号表相对地址
+    private SymbolTable.Symbol symbol;
 
     public Parser(Lexer lexer) {
         this.lexer = lexer;
@@ -28,13 +33,26 @@ public class Parser {
      * 语法分析入口
      */
     public void startParsing() {
+        boolean success = lexer.analyse();
+        if (!success) {
+            System.out.println("未通过词法分析");
+        }
+
+        if (!success) {
+            return;
+        }
+
         word = lexer.getNextWordAndShow();
         parseMainProgram();
+
         if (!exceptionCollector.hasSyntaxException()) {
-            System.out.println("语法分析结束，没有语法错误");
+            System.out.println("通过语法分析");
         } else {
-            System.out.println("语法分析结束");
+            System.out.println("未通过语法分析");
         }
+
+        System.out.println("符号表如下：");
+        table.showTable();
     }
 
     /**
@@ -42,6 +60,10 @@ public class Parser {
      * select: #，var，标识符，if，while，begin
      */
     private void parseMainProgram() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case pound:
             case identifier:
@@ -53,7 +75,17 @@ public class Parser {
                 break;
             default:
                 exceptionCollector.addAndShow(new SyntaxException("#，标识符，if，while，begin", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_MainProgram);
+                skipErrors(pound, varsym, identifier, ifsym, whilesym, beginsym);//select: #，var，标识符，if，while，begin
+                if (isDelimiter(word.getType()) && !lexer.hasWord()) {
+                    return;
+                }
+                word = lexer.getNextWordAndShow();
+                parseMainProgram();
+        }
+
+        if (lexer.hasWord()) {
+            word = lexer.getNextWordAndShow();
+            parseMainProgram();
         }
     }
 
@@ -63,6 +95,10 @@ public class Parser {
      * select: #，var，标识符，if，while，begin
      */
     private void parseSubProgram() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case pound:
             case identifier:
@@ -75,7 +111,11 @@ public class Parser {
                 break;
             default:
                 exceptionCollector.addAndShow(new SyntaxException("#，标识符，if，while，begin", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_SubProgram);
+                skipErrors(pound, varsym, identifier, ifsym, whilesym, beginsym);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseSubProgram();
         }
     }
 
@@ -85,22 +125,38 @@ public class Parser {
      * select:#，标识符，if，while，begin
      */
     private void parseVariable() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case varsym:
                 word = lexer.getNextWordAndShow();
+                addToSymbolTable();
                 if (word.getType() == Type.identifier) {
                     word = lexer.getNextWordAndShow();
                     parseMoreIdentifiers();
-
                     if (word.getType() == Type.semicolon) {
                         word = lexer.getNextWordAndShow();
                     } else {
                         exceptionCollector.addAndShow(new SyntaxException(";", word.getName(), word.getRow(), word.getColumn()));
-                        skipErrors(follow_Variable);
+                        skipErrors(semicolon);
+                        word = lexer.getNextWordAndShow();
                     }
                 } else {
-                    exceptionCollector.addAndShow(new SyntaxException("var，#，标识符，if，while，begin", word.getName(), word.getRow(), word.getColumn()));
-                    skipErrors(follow_Variable);
+                    exceptionCollector.addAndShow(new SyntaxException("标识符", word.getName(), word.getRow(), word.getColumn()));
+                    skipErrors(identifier);
+
+                    addToSymbolTable();
+                    word = lexer.getNextWordAndShow();
+                    parseMoreIdentifiers();
+                    if (word.getType() == Type.semicolon) {
+                        word = lexer.getNextWordAndShow();
+                    } else {
+                        exceptionCollector.addAndShow(new SyntaxException(";", word.getName(), word.getRow(), word.getColumn()));
+                        skipErrors(semicolon);
+                        word = lexer.getNextWordAndShow();
+                    }
                 }
                 break;
             case pound:
@@ -111,7 +167,11 @@ public class Parser {
                 break;
             default:
                 exceptionCollector.addAndShow(new SyntaxException("#，标识符，if，while，begin", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_Variable);
+                skipErrors(varsym, pound, identifier, ifsym, whilesym, beginsym);//varsym,pound,identifier,ifsym,whilesym,beginsym
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseVariable();
         }
     }
 
@@ -121,22 +181,38 @@ public class Parser {
      * select:;
      */
     private void parseMoreIdentifiers() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case comma:
                 word = lexer.getNextWordAndShow();
+                addToSymbolTable();
                 if (word.getType() == Type.identifier) {
                     word = lexer.getNextWordAndShow();
                     parseMoreIdentifiers();
                 } else {
                     exceptionCollector.addAndShow(new SyntaxException("标识符", word.getName(), word.getRow(), word.getColumn()));
-                    skipErrors(follow_MoreIdentifiers);
+                    skipErrors(identifier);
+                    addToSymbolTable();
+
+                    if (isDelimiter(word.getType())) {
+                        return;
+                    }
+                    word = lexer.getNextWordAndShow();
+                    parseMoreIdentifiers();
                 }
                 break;
             case semicolon:
                 break;
             default:
-                exceptionCollector.addAndShow(new SyntaxException(";", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_MoreIdentifiers);
+                exceptionCollector.addAndShow(new SyntaxException(",或;", word.getName(), word.getRow(), word.getColumn()));
+                skipErrors(comma, semicolon);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseMoreIdentifiers();
         }
     }
 
@@ -149,6 +225,10 @@ public class Parser {
      * select：#,;,end
      */
     private void parseStatement() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case identifier:
                 parseAssignmentStatement();
@@ -168,7 +248,11 @@ public class Parser {
                 break;
             default:
                 exceptionCollector.addAndShow(new SyntaxException("标识符,if,while,begin,#,;,end", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_Statement);
+                skipErrors(identifier, ifsym, whilesym, beginsym, pound, semicolon, endsym);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseStatement();
         }
     }
 
@@ -177,18 +261,36 @@ public class Parser {
      * select:标识符
      */
     private void parseAssignmentStatement() {
+        if (word == null) {
+            return;
+        }
+
         if (word.getType() == Type.identifier) {
+            checkDefinition();
+
             word = lexer.getNextWordAndShow();
             if (word.getType() == Type.assignment) {
                 word = lexer.getNextWordAndShow();
                 parseExpression();
             } else {
                 exceptionCollector.addAndShow(new SyntaxException("赋值号", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_AssignmentStatement);
+                skipErrors(assignment);
+
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                word = lexer.getNextWordAndShow();
+                parseExpression();
             }
         } else {
             exceptionCollector.addAndShow(new SyntaxException("标识符", word.getName(), word.getRow(), word.getColumn()));
-            skipErrors(follow_AssignmentStatement);
+            skipErrors(identifier);
+            checkDefinition();
+
+            if (isDelimiter(word.getType())) {
+                return;
+            }
+            parseAssignmentStatement();
         }
     }
 
@@ -197,6 +299,10 @@ public class Parser {
      * select:begin
      */
     private void parseCompoundStatement() {
+        if (word == null) {
+            return;
+        }
+
         if (word.getType() == Type.beginsym) {
             word = lexer.getNextWordAndShow();
             parseStatement();
@@ -205,11 +311,16 @@ public class Parser {
                 word = lexer.getNextWordAndShow();
             } else {
                 exceptionCollector.addAndShow(new SyntaxException("end", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_CompoundStatement);
+                skipErrors(endsym);
+                word = lexer.getNextWordAndShow();
             }
         } else {
             exceptionCollector.addAndShow(new SyntaxException("begin", word.getName(), word.getRow(), word.getColumn()));
-            skipErrors(follow_CompoundStatement);
+            skipErrors(beginsym);
+            if (isDelimiter(word.getType())) {
+                return;
+            }
+            parseCompoundStatement();
         }
     }
 
@@ -218,6 +329,10 @@ public class Parser {
      * select：;
      */
     private void parseMoreStatement() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case semicolon:
                 word = lexer.getNextWordAndShow();
@@ -225,7 +340,11 @@ public class Parser {
                 break;
             default:
                 exceptionCollector.addAndShow(new SyntaxException(";", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_MoreStatement);
+                skipErrors(semicolon);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseMoreStatement();
         }
     }
 
@@ -235,6 +354,10 @@ public class Parser {
      * select：end
      */
     private void parseMoreStatement1() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case identifier:
             case ifsym:
@@ -248,7 +371,11 @@ public class Parser {
                 break;
             default:
                 exceptionCollector.addAndShow(new SyntaxException("标识符，if，while，begin，;，end", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_MoreStatement1);
+                skipErrors(identifier, ifsym, whilesym, beginsym, semicolon, endsym);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseMoreStatement1();
         }
     }
 
@@ -257,6 +384,10 @@ public class Parser {
      * select：+，-，标识符，整数，（
      */
     private void parseCondition() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case plus:
             case minus:
@@ -269,7 +400,11 @@ public class Parser {
                 break;
             default:
                 exceptionCollector.addAndShow(new SyntaxException("+，-，标识符，整数，（", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_Condition);
+                skipErrors(plus, minus, identifier, number);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseCondition();
         }
     }
 
@@ -280,6 +415,10 @@ public class Parser {
      * select：标识符，整数，（
      */
     private void parseExpression() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case plus:
             case minus:
@@ -295,7 +434,11 @@ public class Parser {
                 break;
             default:
                 exceptionCollector.addAndShow(new SyntaxException("+,-,标识符,整数", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_Expression);
+                skipErrors(plus, minus, identifier, lparen, number);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseExpression();
         }
     }
 
@@ -305,6 +448,10 @@ public class Parser {
      * select：=，！=，<，<=，>，>=，），then，do，#，；，end
      */
     private void parseMoreItem() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case plus:
             case minus:
@@ -326,8 +473,13 @@ public class Parser {
             case endsym:
                 break;
             default:
+                //+，-，=，！=，<，<=，>，>=，），then，do，#，；，end
                 exceptionCollector.addAndShow(new SyntaxException("+,-,=，！=，<，<=，>，>=，），then，do", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_MoreItem);
+                skipErrors(plus, minus, eq, neq, less, leq, greater, geq, rparen, thensym, dosym, pound, semicolon, endsym);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseMoreItem();
         }
     }
 
@@ -336,6 +488,10 @@ public class Parser {
      * select:标识符，整数，（
      */
     private void parseItem() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case identifier:
             case number:
@@ -345,7 +501,11 @@ public class Parser {
                 break;
             default:
                 exceptionCollector.addAndShow(new SyntaxException("标识符，整数，（", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_Item);
+                skipErrors(identifier, number, lparen);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseItem();
         }
     }
 
@@ -355,6 +515,10 @@ public class Parser {
      * select:*，/
      */
     private void parseMoreFactor() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case times:
             case division:
@@ -377,8 +541,13 @@ public class Parser {
             case endsym:
                 break;
             default:
-                exceptionCollector.addAndShow(new SyntaxException("+，-，=，！=，<，<=，>，>=，），then，do,*，/", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_MoreFactor);
+                //+，-，=，！=，<，<=，>，>=，），then，do，#，；，end
+                exceptionCollector.addAndShow(new SyntaxException("+，-，*，/，=，！=，<，<=，>，>=，），then，do,*，/", word.getName(), word.getRow(), word.getColumn()));
+                skipErrors(plus, minus, times, division, eq, neq, less, leq, greater, geq, rparen, thensym, dosym, pound, semicolon, endsym);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseMoreFactor();
         }
     }
 
@@ -389,8 +558,17 @@ public class Parser {
      * select:（
      */
     private void parseFactor() {
+        if (word == null) {
+            return;
+        }
+
+        checkDefinition();
         switch (word.getType()) {
             case identifier:
+                if (table.find(word.getName()) == null) {
+                    printErrorMsg("语义错误：" + word.getName() + " 重复定义", word.getRow(), word.getColumn());
+                }
+
                 word = lexer.getNextWordAndShow();
                 break;
             case number:
@@ -403,12 +581,17 @@ public class Parser {
                     word = lexer.getNextWordAndShow();
                 } else {
                     exceptionCollector.addAndShow(new SyntaxException("）", word.getName(), word.getRow(), word.getColumn()));
-                    skipErrors(follow_Factor);
+                    skipErrors(rparen);
+                    word = lexer.getNextWordAndShow();
                 }
                 break;
             default:
                 exceptionCollector.addAndShow(new SyntaxException("标识符,整数,（", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_Factor);
+                skipErrors(identifier, number, lparen);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseFactor();
         }
     }
 
@@ -417,6 +600,10 @@ public class Parser {
      * select:+ -
      */
     private void parseAddingOperator() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case plus:
                 word = lexer.getNextWordAndShow();
@@ -426,7 +613,11 @@ public class Parser {
                 break;
             default:
                 exceptionCollector.addAndShow(new SyntaxException("+,-", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_PlusOperator);
+                skipErrors(plus, minus);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseAddingOperator();
         }
     }
 
@@ -435,6 +626,10 @@ public class Parser {
      * select:*，/
      */
     private void parseMultiplyingOperator() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case times:
                 word = lexer.getNextWordAndShow();
@@ -444,7 +639,11 @@ public class Parser {
                 break;
             default:
                 exceptionCollector.addAndShow(new SyntaxException("*,/", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_MultiplyingOperator);
+                skipErrors(times, division);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseMultiplyingOperator();
         }
     }
 
@@ -453,6 +652,10 @@ public class Parser {
      * select:=，！=，<，<=，>，>=
      */
     private void parseRelationalOperator() {
+        if (word == null) {
+            return;
+        }
+
         switch (word.getType()) {
             case eq:
             case neq:
@@ -463,8 +666,13 @@ public class Parser {
                 word = lexer.getNextWordAndShow();
                 break;
             default:
+                //=，！=，<，<=，>，>=
                 exceptionCollector.addAndShow(new SyntaxException("=，！=，<，<=，>，>=", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_RelationalOperator);
+                skipErrors(eq, neq, less, leq, greater, geq);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                parseRelationalOperator();
         }
     }
 
@@ -473,6 +681,10 @@ public class Parser {
      * select:if
      */
     private void parseConditionStatement() {
+        if (word == null) {
+            return;
+        }
+
         if (word.getType() == Type.ifsym) {
             word = lexer.getNextWordAndShow();
             parseCondition();
@@ -481,11 +693,20 @@ public class Parser {
                 parseStatement();
             } else {
                 exceptionCollector.addAndShow(new SyntaxException("then", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_ConditionStatement);
+                skipErrors(thensym);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                word = lexer.getNextWordAndShow();
+                parseStatement();
             }
         } else {
             exceptionCollector.addAndShow(new SyntaxException("if", word.getName(), word.getRow(), word.getColumn()));
-            skipErrors(follow_ConditionStatement);
+            skipErrors(ifsym);
+            if (isDelimiter(word.getType())) {
+                return;
+            }
+            parseConditionStatement();
         }
     }
 
@@ -494,6 +715,10 @@ public class Parser {
      * select:while
      */
     private void parseWhileStatement() {
+        if (word == null) {
+            return;
+        }
+
         if (word.getType() == Type.whilesym) {
             word = lexer.getNextWordAndShow();
             parseCondition();
@@ -501,21 +726,32 @@ public class Parser {
                 word = lexer.getNextWordAndShow();
                 parseStatement();
             } else {
-                exceptionCollector.addAndShow(new SyntaxException("while", word.getName(), word.getRow(), word.getColumn()));
-                skipErrors(follow_WhileStatement);
+                exceptionCollector.addAndShow(new SyntaxException("do", word.getName(), word.getRow(), word.getColumn()));
+                skipErrors(dosym);
+                if (isDelimiter(word.getType())) {
+                    return;
+                }
+                word = lexer.getNextWordAndShow();
+                parseStatement();
             }
         } else {
             exceptionCollector.addAndShow(new SyntaxException("while", word.getName(), word.getRow(), word.getColumn()));
-            skipErrors(follow_WhileStatement);
+            skipErrors(whilesym);
+            if (isDelimiter(word.getType())) {
+                return;
+            }
+            parseWhileStatement();
         }
     }
 
     private void skipErrors(Type... types) {
-        System.out.println("错误处理，忽略以下单词：" + "\033[37m");
-        System.out.println(word);
-        while ((word = lexer.getNextWord()) != null) {
-            System.out.print("\033[37m");
+        if (word != null && !isDelimiter(word.getType())) {
+            System.out.println("错误处理，忽略以下单词：" + "\033[37m");
+        }
+
+        while (word != null && !isDelimiter(word.getType())) {
             boolean matched = false;
+
             for (Type type : types) {
                 if (type == word.getType()) {
                     matched = true;
@@ -524,12 +760,48 @@ public class Parser {
             }
 
             if (matched) {
-                System.out.println("\033[0m" + word);//正常输出
+                System.out.println("\033[0m" + word);
                 break;
-            } else {
-                System.out.println(word);
             }
+
+            System.out.println(word);
+            word = lexer.getNextWord();
+        }
+
+        if (word != null && isDelimiter(word.getType())) {
+            System.out.println("\033[0m" + word);
         }
         System.out.print("\033[0m");
+    }
+
+    private boolean isDelimiter(Type type) {
+        return type == semicolon || type == endsym;
+    }
+
+    private void printErrorMsg(String msg, int row, int column) {
+        System.out.println("\033[31;4m" + msg + " at " + row + ", " + column + "\033[0m");
+    }
+
+    private void addToSymbolTable() {
+        if (ReservedWords.contains(word.getName())) {
+            printErrorMsg("语义错误：" + word.getName() + " 与保留字冲突！", word.getRow(), word.getColumn());
+            return;
+        }
+
+        if ((table.find(word.getName())) != null) {
+            printErrorMsg("语义错误：" + word.getName() + " 重复定义！", word.getRow(), word.getColumn());
+        } else if (word.getType() != identifier) {
+            printErrorMsg("语义错误：" + word.getName() + " 不是合法的标识符！", word.getRow(), word.getColumn());
+        } else {
+            table.add(word.getName(), word.getType(), 0, ++relativeAddr);
+        }
+    }
+
+    private void checkDefinition() {
+        if (word.getType() == identifier) {
+            if ((symbol = table.find(word.getName())) == null) {
+                printErrorMsg("语义错误：" + word.getName() + "未定义！", word.getRow(), word.getColumn());
+            }
+        }
     }
 }

@@ -1,9 +1,6 @@
 package guet.libuyan.com.compile_design.test4.lexer;
 
-import guet.libuyan.com.compile_design.test4.commons.CharList;
-import guet.libuyan.com.compile_design.test4.commons.ReservedWords;
-import guet.libuyan.com.compile_design.test4.commons.Type;
-import guet.libuyan.com.compile_design.test4.commons.Word;
+import guet.libuyan.com.compile_design.test4.commons.*;
 
 import java.io.File;
 import java.io.FileReader;
@@ -18,8 +15,27 @@ public class Lexer {
 
     private LexerInfoCollector infoCollector = new LexerInfoCollector();
 
+    private int index;
     private int row = 1;
     private int column;
+
+    public boolean analyse() {
+        while (hasCharacter()) {
+            Word word;
+
+            while ((word = _getNextWord()) == null && hasCharacter()) ;
+
+            if (word != null) {
+                infoCollector.addWord(word);
+            }
+        }
+
+        return infoCollector.getErrors().size() == 0;
+    }
+
+    public void showAllWords() {
+        infoCollector.showAllWords();
+    }
 
     public Lexer(String program) {
         this.charList = new CharList(program);
@@ -58,7 +74,7 @@ public class Lexer {
      *
      * @return 单词
      */
-    public Word getNextWord() {
+    private Word _getNextWord() {
         Word word = null;
         StringBuilder wordName = new StringBuilder();
 
@@ -233,21 +249,20 @@ public class Lexer {
 //            word = new Word(wordName.toString(), Type.unknown, initialRow, initialColumn);
         }
 
-        if (word == null && hasCharacter()) {
-            return getNextWord();
-        }
+        return word;
+    }
 
+    public Word getNextWordAndShow() {
+        Word word = infoCollector.getWord(index++);
         if (word != null) {
-            infoCollector.addWord(word);
+            System.out.println(word);
         }
 
         return word;
     }
 
-    public Word getNextWordAndShow() {
-        Word word = getNextWord();
-        System.out.println(word);
-        return word;
+    public Word getNextWord() {
+        return infoCollector.getWord(index++);
     }
 
     /**
@@ -255,8 +270,12 @@ public class Lexer {
      *
      * @return true:是   false:否
      */
-    public boolean hasCharacter() {
+    private boolean hasCharacter() {
         return charList.top() != null;
+    }
+
+    public boolean hasWord() {
+        return infoCollector.hasWord(index);
     }
 
     /**
