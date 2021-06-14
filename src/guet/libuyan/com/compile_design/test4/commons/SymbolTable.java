@@ -5,6 +5,8 @@ import guet.libuyan.com.compile_design.test4.commons.Type;
 import java.util.*;
 
 /**
+ * 符号表数据结构
+ *
  * @author lan
  * @create 2021-06-13-19:53
  */

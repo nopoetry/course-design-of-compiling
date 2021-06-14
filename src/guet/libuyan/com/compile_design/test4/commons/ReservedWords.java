@@ -13,11 +13,13 @@ public class ReservedWords {
     private static final List<String> words =
             Arrays.asList("const", "var", "procedure", "begin", "end", "if", "then", "call", "while", "do");
 
+    /**
+     * 通过传入单词名称，判断是否是保留字
+     *
+     * @param word
+     * @return 是/否
+     */
     public static boolean contains(String word) {
         return words.contains(word);
-    }
-
-    public static boolean contains(char[] word) {
-        return words.contains(String.valueOf(word));
     }
 }

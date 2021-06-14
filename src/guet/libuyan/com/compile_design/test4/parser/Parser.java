@@ -574,10 +574,6 @@ public class Parser {
         checkDefinition();
         switch (word.getType()) {
             case identifier:
-                if (table.find(word.getName()) == null) {
-                    printSemError("语义错误：" + word.getName() + " 重复定义", word.getRow(), word.getColumn());
-                }
-
                 word = lexer.getNextWordAndShow();
                 break;
             case number:
@@ -795,7 +791,7 @@ public class Parser {
     private void printSemError(String msg, int row, int column) {
         String s = msg + " at " + row + ", " + column;
         semErrors.add(s);
-        printErrorMsg(msg);
+        printErrorMsg(s);
     }
 
     private void addToSymbolTable() {
