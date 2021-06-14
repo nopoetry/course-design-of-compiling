@@ -1,6 +1,9 @@
 package guet.libuyan.com.compile_design.test4.lexer;
 
-import guet.libuyan.com.compile_design.test4.commons.*;
+import guet.libuyan.com.compile_design.test4.commons.CharList;
+import guet.libuyan.com.compile_design.test4.commons.ReservedWords;
+import guet.libuyan.com.compile_design.test4.commons.Type;
+import guet.libuyan.com.compile_design.test4.commons.Word;
 
 import java.io.File;
 import java.io.FileReader;

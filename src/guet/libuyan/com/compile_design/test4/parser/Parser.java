@@ -1,13 +1,14 @@
 package guet.libuyan.com.compile_design.test4.parser;
 
-import guet.libuyan.com.compile_design.test2.Symbol;
 import guet.libuyan.com.compile_design.test4.commons.ReservedWords;
 import guet.libuyan.com.compile_design.test4.commons.SymbolTable;
 import guet.libuyan.com.compile_design.test4.commons.Type;
 import guet.libuyan.com.compile_design.test4.commons.Word;
 import guet.libuyan.com.compile_design.test4.exception.SyntaxException;
 import guet.libuyan.com.compile_design.test4.lexer.Lexer;
-import javafx.scene.control.Tab;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static guet.libuyan.com.compile_design.test4.commons.Type.*;
 
@@ -18,6 +19,7 @@ import static guet.libuyan.com.compile_design.test4.commons.Type.*;
 public class Parser {
     private final ParserExceptionCollector exceptionCollector;
     private final Lexer lexer;
+    private List<String> semErrors = new ArrayList<>(32);
     private Word word;
 
     private SymbolTable table = new SymbolTable();
@@ -49,6 +51,13 @@ public class Parser {
             System.out.println("通过语法分析");
         } else {
             System.out.println("未通过语法分析");
+        }
+
+        success = false;
+        if (semErrors.size() == 0) {
+            System.out.println("通过语义分析");
+        } else {
+            System.out.println("未通过语义分析");
         }
 
         System.out.println("符号表如下：");
@@ -566,7 +575,7 @@ public class Parser {
         switch (word.getType()) {
             case identifier:
                 if (table.find(word.getName()) == null) {
-                    printErrorMsg("语义错误：" + word.getName() + " 重复定义", word.getRow(), word.getColumn());
+                    printSemError("语义错误：" + word.getName() + " 重复定义", word.getRow(), word.getColumn());
                 }
 
                 word = lexer.getNextWordAndShow();
@@ -778,20 +787,31 @@ public class Parser {
         return type == semicolon || type == endsym;
     }
 
-    private void printErrorMsg(String msg, int row, int column) {
-        System.out.println("\033[31;4m" + msg + " at " + row + ", " + column + "\033[0m");
+    private void printErrorMsg(String msg) {
+        System.out.println("\033[31;4m" + msg + "\033[0m");
+    }
+
+
+    private void printSemError(String msg, int row, int column) {
+        String s = msg + " at " + row + ", " + column;
+        semErrors.add(s);
+        printErrorMsg(msg);
     }
 
     private void addToSymbolTable() {
+        if (isDelimiter(word.getType())) {
+            return;
+        }
+
         if (ReservedWords.contains(word.getName())) {
-            printErrorMsg("语义错误：" + word.getName() + " 与保留字冲突！", word.getRow(), word.getColumn());
+            printSemError("语义错误：" + word.getName() + " 与保留字冲突！", word.getRow(), word.getColumn());
             return;
         }
 
         if ((table.find(word.getName())) != null) {
-            printErrorMsg("语义错误：" + word.getName() + " 重复定义！", word.getRow(), word.getColumn());
+            printSemError("语义错误：" + word.getName() + " 重复定义！", word.getRow(), word.getColumn());
         } else if (word.getType() != identifier) {
-            printErrorMsg("语义错误：" + word.getName() + " 不是合法的标识符！", word.getRow(), word.getColumn());
+            printSemError("语义错误：" + word.getName() + " 不是合法的标识符！", word.getRow(), word.getColumn());
         } else {
             table.add(word.getName(), word.getType(), 0, ++relativeAddr);
         }
@@ -800,7 +820,7 @@ public class Parser {
     private void checkDefinition() {
         if (word.getType() == identifier) {
             if ((symbol = table.find(word.getName())) == null) {
-                printErrorMsg("语义错误：" + word.getName() + "未定义！", word.getRow(), word.getColumn());
+                printSemError("语义错误：" + word.getName() + "未定义！", word.getRow(), word.getColumn());
             }
         }
     }
